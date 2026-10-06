@@ -118,6 +118,31 @@ export async function POST(request: NextRequest) {
     const body = await request.json()
     const action = body.action ?? ""
 
+    // Authorization: grant and create actions require WORKBENCH_ADMIN role.
+    // Caller's-rights query ensures we check the *caller's* role, not the service identity.
+    if (action === "grant" || action === "create") {
+      try {
+        const [row] = await querySnowflake("SELECT CURRENT_ROLE() AS role", { callersRights: true })
+        const callerRole = String(row?.ROLE ?? "").toUpperCase()
+        if (callerRole !== "WORKBENCH_ADMIN") {
+          return Response.json(
+            { error: "Forbidden: only WORKBENCH_ADMIN can grant access or create shares" },
+            { status: 403 }
+          )
+        }
+      } catch {
+        // In local dev without caller context, fall back to service role check
+        const [row] = await querySnowflake("SELECT CURRENT_ROLE() AS role")
+        const serviceRole = String(row?.ROLE ?? "").toUpperCase()
+        if (serviceRole !== "WORKBENCH_ADMIN" && serviceRole !== "ACCOUNTADMIN") {
+          return Response.json(
+            { error: "Forbidden: only WORKBENCH_ADMIN can grant access or create shares" },
+            { status: 403 }
+          )
+        }
+      }
+    }
+
     switch (action) {
       case "grant": {
         validateAllowedDb(body.database ?? "")
