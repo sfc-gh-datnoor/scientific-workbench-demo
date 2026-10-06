@@ -31,15 +31,11 @@ export async function POST(req: NextRequest) {
     if (thread_id && thread_id !== "null") payload.thread_id = thread_id
     if (parent_message_id && parent_message_id !== "null") payload.parent_message_id = parent_message_id
 
-    const escapedJson = JSON.stringify(payload).replace(/'/g, "''")
+    const agentSql = `SELECT SNOWFLAKE.CORTEX.DATA_AGENT_RUN(?, ?, TRUE) AS resp`
 
-    const agentSql = `SELECT SNOWFLAKE.CORTEX.DATA_AGENT_RUN(
-        '${AGENT_NAME}',
-        '${escapedJson}',
-        TRUE
-      ) AS resp`
-
-    const rows = await querySnowflakeLongRunning(agentSql)
+    const rows = await querySnowflakeLongRunning(agentSql, {
+      binds: [AGENT_NAME, JSON.stringify(payload)],
+    })
     const raw = (rows[0] as { RESP: unknown })?.RESP
 
     let parsed: unknown = raw

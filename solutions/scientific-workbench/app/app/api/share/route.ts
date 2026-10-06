@@ -133,6 +133,19 @@ export async function POST(request: NextRequest) {
         return Response.json({ message: `Granted SELECT on ${body.database}.${body.schema}.${body.table} to role ${body.role}` })
       }
       case "create": {
+        // Cross-account sharing requires an explicit allowlist.
+        // Set SWB_ALLOWED_SHARE_ACCOUNTS="ORG1.ACCT1,ORG2.ACCT2" to enable.
+        const allowedAccountsEnv = process.env.SWB_ALLOWED_SHARE_ACCOUNTS ?? ""
+        const allowedAccounts = new Set(
+          allowedAccountsEnv.split(",").map((a) => a.trim().toUpperCase()).filter(Boolean)
+        )
+        if (allowedAccounts.size === 0) {
+          return Response.json(
+            { error: "Cross-account sharing is disabled. Set SWB_ALLOWED_SHARE_ACCOUNTS to enable." },
+            { status: 403 }
+          )
+        }
+
         validateAllowedDb(body.database ?? "")
         const share = quoteId(body.share_name ?? "")
         const db = quoteId(body.database ?? "")
@@ -141,6 +154,12 @@ export async function POST(request: NextRequest) {
         const account = body.target_account ?? ""
         if (!ACCOUNT_RE.test(account)) {
           return Response.json({ error: `Invalid account identifier: ${account}` }, { status: 400 })
+        }
+        if (!allowedAccounts.has(account.toUpperCase())) {
+          return Response.json(
+            { error: `Account ${account} is not in the allowed share targets list` },
+            { status: 403 }
+          )
         }
         const steps: { step: string; result: Record<string, unknown>[] }[] = []
 

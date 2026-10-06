@@ -83,7 +83,7 @@ export default function CatalogPage() {
         const res = await fetch("/api/query", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ sql: "SELECT ASSET_ID, NAME AS ASSET_NAME, TYPE AS ASSET_TYPE, PROGRAM, OWNER, DESCRIPTION, QUALITY_STATUS, CREATED_DATE AS CREATED_AT FROM SCIENTIFIC_WORKBENCH.CATALOG.ASSETS ORDER BY CREATED_DATE DESC NULLS LAST LIMIT 200" }),
+          body: JSON.stringify({ query: "assets_list" }),
         })
         const data = await res.json()
         // Only accept an array. /api/query answers a failed query with a JSON

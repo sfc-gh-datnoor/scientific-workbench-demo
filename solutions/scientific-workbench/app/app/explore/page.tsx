@@ -72,7 +72,7 @@ function ExplorePageInner() {
         const res = await fetch("/api/query", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ sql: "SELECT TABLE_SCHEMA, TABLE_NAME FROM SCIENTIFIC_WORKBENCH.INFORMATION_SCHEMA.TABLES WHERE TABLE_SCHEMA NOT IN ('INFORMATION_SCHEMA') ORDER BY TABLE_SCHEMA, TABLE_NAME" }),
+          body: JSON.stringify({ query: "schema_tables" }),
         })
         const data = await res.json()
         // Guard: a failed query returns a JSON error object, not an array.
@@ -97,8 +97,8 @@ function ExplorePageInner() {
     setLoadingTable(true)
     try {
       const [colRes, dataRes] = await Promise.all([
-        fetch("/api/query", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ sql: `SELECT COLUMN_NAME, DATA_TYPE, IS_NULLABLE, CHARACTER_MAXIMUM_LENGTH FROM SCIENTIFIC_WORKBENCH.INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA = '${schema}' AND TABLE_NAME = '${table}' ORDER BY ORDINAL_POSITION` }) }),
-        fetch("/api/query", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ sql: `SELECT * FROM ${fullName} LIMIT 50` }) }),
+        fetch("/api/query", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ query: "column_info", params: { schema, table } }) }),
+        fetch("/api/query", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ query: "table_preview", params: { schema, table } }) }),
       ])
       const colData = await colRes.json()
       const sData = await dataRes.json()

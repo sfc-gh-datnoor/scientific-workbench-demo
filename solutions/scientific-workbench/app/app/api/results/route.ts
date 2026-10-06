@@ -4,6 +4,22 @@ import { NextRequest } from "next/server"
 
 export const dynamic = "force-dynamic"
 
+// Only these qualified schema prefixes are accessible via this endpoint
+const ALLOWED_SCHEMA_PREFIXES = [
+  "SCIENTIFIC_WORKBENCH.CATALOG",
+  "SCIENTIFIC_WORKBENCH.WORKFLOWS",
+  "SCIENTIFIC_WORKBENCH.GOVERNANCE",
+  "SCIENTIFIC_WORKBENCH.PROVENANCE",
+  "SCIENTIFIC_WORKBENCH.PROJECTS",
+  "WORKBENCH_PROJECTS.SHARED_ANALYTICS",
+  "WORKBENCH_REFERENCE.",
+]
+
+function isAllowedTable(qualifiedName: string): boolean {
+  const upper = qualifiedName.toUpperCase()
+  return ALLOWED_SCHEMA_PREFIXES.some((prefix) => upper.startsWith(prefix))
+}
+
 export async function GET(req: NextRequest) {
   const table = req.nextUrl.searchParams.get("table")
   if (!table) {
@@ -16,6 +32,11 @@ export async function GET(req: NextRequest) {
     quotedTable = quoteQualifiedName(table)
   } catch {
     return safeErrorResponse("Invalid table name format", 400)
+  }
+
+  // Authorization: only allow tables within workbench schemas
+  if (!isAllowedTable(table)) {
+    return safeErrorResponse("Access denied: table is outside the allowed workbench schemas", 403)
   }
 
   try {

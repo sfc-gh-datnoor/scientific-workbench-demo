@@ -186,9 +186,9 @@ export function GovernanceClient() {
     async function load() {
       try {
         const [promRes, canRes, provRes] = await Promise.all([
-          fetch("/api/query", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ sql: "SELECT * FROM SCIENTIFIC_WORKBENCH.GOVERNANCE.PROMOTION_LOG ORDER BY ATTESTED_AT DESC NULLS LAST" }) }),
-          fetch("/api/query", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ sql: "SELECT * FROM SCIENTIFIC_WORKBENCH.GOVERNANCE.CANARY_ASSERTIONS ORDER BY ASSERTION_ID" }) }),
-          fetch("/api/query", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ sql: "SELECT * FROM SCIENTIFIC_WORKBENCH.PROVENANCE.PROVENANCE_LOG ORDER BY LOGGED_AT DESC LIMIT 50" }) }),
+          fetch("/api/query", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ query: "promotion_log" }) }),
+          fetch("/api/query", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ query: "canary_assertions" }) }),
+          fetch("/api/query", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ query: "provenance_log" }) }),
         ])
         const [promData, canData, provData] = await Promise.all([promRes.json(), canRes.json(), provRes.json()])
         setPromotions(toRows<PromotionEntry>(promData))

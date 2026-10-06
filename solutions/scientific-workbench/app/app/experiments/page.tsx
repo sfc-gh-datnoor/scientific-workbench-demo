@@ -115,7 +115,14 @@ function ExperimentDetailPanel({ exp }: { exp: Experiment }) {
       const res = await fetch("/api/query", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ sql: `SELECT * FROM ${outputTable} LIMIT 100` }),
+        body: JSON.stringify({
+          query: "experiment_results",
+          params: {
+            database: outputTable.split(".")[0] || "SCIENTIFIC_WORKBENCH",
+            schema: outputTable.split(".")[1] || "WORKFLOWS",
+            table: outputTable.split(".").pop() || "",
+          },
+        }),
       })
       const data = await res.json()
       if (data.error) { setResultError(data.error); return }
@@ -283,7 +290,7 @@ export default function ExperimentsPage() {
         const res = await fetch("/api/query", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ sql: "SELECT r.RUN_ID, r.TEMPLATE_ID, t.DISPLAY_NAME AS TEMPLATE_NAME, r.STATUS, r.STARTED_AT, r.COMPLETED_AT, r.PARAMETERS, r.AGENT_SUMMARY, r.STEP_RESULTS FROM SCIENTIFIC_WORKBENCH.WORKFLOWS.RUNS r LEFT JOIN SCIENTIFIC_WORKBENCH.WORKFLOWS.TEMPLATES t ON r.TEMPLATE_ID = t.TEMPLATE_ID ORDER BY r.STARTED_AT DESC LIMIT 50" }),
+          body: JSON.stringify({ query: "experiments_list" }),
         })
         const data = await res.json()
         // Guard: a failed query returns a JSON error object, not an array.

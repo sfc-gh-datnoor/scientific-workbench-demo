@@ -201,7 +201,10 @@ export async function POST(req: NextRequest) {
       } catch { /* ignore parse errors */ }
     }
 
-    // SUBMIT_TOOL
+    // SUBMIT_TOOL — Security note: ONBOARD_CUSTOM_TOOL queues all source types
+    // except "existing_procedure" into CUSTOM_TOOL_SUBMISSIONS for admin approval.
+    // No executable code (python_code, spcs_container, git_repo) is registered
+    // without human review, even if the LLM emits it.
     const submitMatch = responseText.match(/SUBMIT_TOOL:(\{[\s\S]*?\})\s*$/m)
       || responseText.match(/SUBMIT_TOOL:(\{[\s\S]*\})/)
     if (submitMatch) {

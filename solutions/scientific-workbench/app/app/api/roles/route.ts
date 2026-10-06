@@ -57,11 +57,13 @@ export async function POST(req: NextRequest) {
       return safeErrorResponse("Role not accessible", 403)
     }
 
-    // USE ROLE does not support bind variables, but the role is now validated
-    // against the allowlist so it's safe to interpolate the quoted identifier
+    // USE ROLE does not support bind variables, but the role is validated
+    // against the user's own role list so it's safe to interpolate.
+    // Use caller's rights so the role switch only affects the caller's
+    // session, not the shared owner connection pool.
     const quotedRole = quoteIdentifier(normalized)
-    await querySnowflake(`USE ROLE ${quotedRole}`)
-    const [row] = await querySnowflake("SELECT CURRENT_ROLE() AS role")
+    await querySnowflake(`USE ROLE ${quotedRole}`, { callersRights: true })
+    const [row] = await querySnowflake("SELECT CURRENT_ROLE() AS role", { callersRights: true })
     return Response.json({ success: true, active_role: row?.ROLE ?? role })
   } catch (e) {
     console.error("Roles POST error:", e)
