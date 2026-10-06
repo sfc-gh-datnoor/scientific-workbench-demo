@@ -1,6 +1,18 @@
 # Snowflake Scientific Workbench
 
+> **Disclaimer:** This application is not part of the Snowflake Service and is governed by the terms in LICENSE, unless expressly agreed to in writing. You use this application at your own risk, and Snowflake has no obligation to support your use of this application. [Learn more](../../LEGAL.md)
+
 An enterprise AI platform for life sciences R&D — built entirely on Snowflake.
+
+## Requirements
+
+- Snowflake account (Enterprise edition or higher recommended)
+- Non-trial account (AI features — Cortex Agents, Cortex Search, Cortex LLM functions — must be enabled)
+- ACCOUNTADMIN role (for initial setup; can be reduced to SYSADMIN after)
+- Snowflake CLI (`snow`) installed and authenticated
+- Node.js 20+ and npm (for app build/deployment)
+- NVIDIA API key from [build.nvidia.com](https://build.nvidia.com) (free tier available)
+- NGC API key from [ngc.nvidia.com](https://ngc.nvidia.com/setup/personal-keys) (optional, for SPCS NIM containers)
 
 ## Overview
 
