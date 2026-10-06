@@ -1,0 +1,22 @@
+version: 1
+artifacts:
+  - path: computational_biology.agent.yaml
+    type: cortex_agent
+    targets:
+      default:
+        object: SCIENTIFIC_WORKBENCH.CATALOG.COMPUTATIONAL_BIOLOGY_AGENT
+  - path: medicinal_chemistry.agent.yaml
+    type: cortex_agent
+    targets:
+      default:
+        object: SCIENTIFIC_WORKBENCH.CATALOG.MEDICINAL_CHEMISTRY_AGENT
+  - path: structural_biology.agent.yaml
+    type: cortex_agent
+    targets:
+      default:
+        object: SCIENTIFIC_WORKBENCH.CATALOG.STRUCTURAL_BIOLOGY_AGENT
+  - path: scientific_workbench_router.agent.yaml
+    type: cortex_agent
+    targets:
+      default:
+        object: SCIENTIFIC_WORKBENCH.CATALOG.SCIENTIFIC_WORKBENCH_ROUTER

@@ -1,0 +1,39 @@
+{
+  "name": "scientific-workbench",
+  "display_name": "Scientific Workbench for Life Sciences R&D",
+  "version": "1.0.0",
+  "industry": "Healthcare & Life Sciences",
+  "description": "Enterprise AI platform for life sciences R&D on Snowflake. Combines Cortex Agents (Discovery Agent with Claude Sonnet 5.5), 23 registered scientific tools (NVIDIA BioNeMo GPU NIMs, Native Snowpark, PubMed/ClinicalTrials Search), Cortex Analyst semantic views, multi-step workflow pipelines, notebooks, and a Next.js Snowflake App Runtime (SAR) application.",
+  "database": "SCIENTIFIC_WORKBENCH",
+  "schemas": ["CATALOG", "WORKFLOWS", "PROVENANCE", "GOVERNANCE", "RESULTS"],
+  "role": "ACCOUNTADMIN",
+  "requires_warehouse": true,
+  "requires_marketplace": [
+    {
+      "name": "PubMed Biomedical Research Corpus",
+      "url": "https://app.snowflake.com/marketplace/listing/GZTYZ4386LY/cybersyn-pubmed-biomedical-research-corpus",
+      "required": false,
+      "note": "Enables PubMed biomedical literature search (38M+ articles) in Discovery Agent and literature tools."
+    },
+    {
+      "name": "ClinicalTrials.gov Research Database",
+      "url": "https://app.snowflake.com/marketplace/listing/GZTYZ4386LZ/clinical-trials-research-database",
+      "required": false,
+      "note": "Enables clinical trial search and outcome analytics in Discovery Agent."
+    }
+  ],
+  "install_scripts": ["scripts/setup.sql"],
+  "teardown_scripts": ["scripts/teardown.sql"],
+  "features": [
+    "Cortex Agent (Discovery Agent with Claude Sonnet 5.5)",
+    "Cortex Agent Multi-Agent Router & Skills",
+    "Cortex Analyst (4 Semantic Views: Genomics, Compounds, Clinical, Chemistry)",
+    "Cortex Search (Tool Registry, Asset Search, PubMed)",
+    "NVIDIA BioNeMo NIMs (GenMol, MolMIM, DiffDock, Boltz-2, ProteinMPNN, RFdiffusion, OpenFold2/3, Evo2, MSA-Search)",
+    "Snowpark Python Native Procedures & Functions",
+    "Snowflake App Runtime (Next.js Application)",
+    "Snowflake Notebooks (6 Life Sciences Workspaces)",
+    "Deterministic Workflow Engine & Canaries"
+  ],
+  "notes": "Requires an NVIDIA API key from build.nvidia.com for hosted NIM endpoints. Optional NGC API key for SPCS container mirroring."
+}

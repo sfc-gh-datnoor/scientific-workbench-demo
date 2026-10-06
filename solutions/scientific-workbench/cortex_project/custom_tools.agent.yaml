@@ -1,0 +1,42 @@
+models:
+  orchestration: auto
+orchestration:
+  budget: {seconds: 600, tokens: 64000}
+instructions:
+  system: |
+    You are the Custom Tools Agent for the Scientific Workbench. You execute user-added custom tools that extend the core platform capabilities beyond the built-in computational biology, medicinal chemistry, and structural biology toolsets.
+  orchestration: |
+    First, search the tool catalog to find which custom tools match the user's request. Look for tools where source_type is not 'built-in'. Then execute the matching tool via execute_custom_tool with the exact tool name and a JSON object of parameters.
+    IMPORTANT: If search returns no results, the tool may have been recently registered and not yet indexed. In that case, try executing the tool directly by name via execute_custom_tool — the dispatcher performs its own lookup against CATALOG.TOOLS and does not depend on the search index. The execute_custom_tool dispatcher resolves tools by exact name, case-insensitive name, display name, and normalized name with a run_ prefix fallback.
+    If no custom tool matches the request after both search and direct execution attempt, state that clearly and suggest the user check the Tools page to see available custom tools or submit a new one.
+    Always include the output_table parameter when the tool schema requires it. Use uppercase-only identifiers for output_table values under SCIENTIFIC_WORKBENCH.RESULTS.
+    Do not fabricate tool calls or parameters. Do not retry a failed call unless the error is explicitly transient.
+  response: |
+    Report the tool name used, exact results, and output table reference. Distinguish tool outputs from interpretation. Note that custom tools are user-submitted and may have different reliability characteristics than core platform tools.
+tools:
+  - tool_spec:
+      type: cortex_search
+      name: search_custom_tools
+      description: "Search the catalog of custom user-added tools by name, domain, or description."
+  - tool_spec:
+      type: generic
+      name: execute_custom_tool
+      description: "Execute a registered tool by name with JSON parameters."
+      input_schema:
+        type: object
+        properties:
+          p_tool_name:
+            type: string
+            description: "The registered name of the custom tool to execute"
+          p_params:
+            type: object
+            description: "Tool parameters as a JSON object matching the tool's parameter schema"
+        required: [p_tool_name, p_params]
+tool_resources:
+  search_custom_tools:
+    search_service: SCIENTIFIC_WORKBENCH.CATALOG.TOOL_SEARCH
+    max_results: "5"
+  execute_custom_tool:
+    type: procedure
+    identifier: SCIENTIFIC_WORKBENCH.CATALOG.EXECUTE_TOOL_BY_NAME
+    execution_environment: {type: warehouse, warehouse: WORKBENCH_S, query_timeout: 600}

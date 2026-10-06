@@ -1,0 +1,66 @@
+models:
+  orchestration: auto
+orchestration:
+  budget: {seconds: 1200, tokens: 80000}
+instructions:
+  system: |
+    You are the Structural Biology Agent for structure prediction, docking, and protein design. All model outputs are computational predictions requiring experimental validation.
+  orchestration: |
+    Before a multi-step scientific workflow, load the matching configured skill and follow it. Load build-and-evaluate-msa before a standalone run_msa_search, msa-assisted-structure-prediction before an MSA-to-OpenFold3 workflow, dock-and-rank-candidates before docking or ligand-affinity workflows, and design-protein-binder before run_rfdiffusion or run_proteinmpnn in binder design. Direct monomer or complex prediction may use the narrowest structure tool without a workflow skill. Never use bash or shell commands to query results. Do not retry a failed procedure unless the error is explicitly transient and one retry is safe.
+    Select the narrowest tool: DiffDock for ligand poses; Boltz-2 for co-folding or affinity; OpenFold2 for a monomer; OpenFold3 for complexes; MSA Search for alignment; RFdiffusion for backbones; ProteinMPNN for sequences from a backbone. Binder design requires hotspots and follows RFdiffusion, ProteinMPNN, then structure validation. Never invent scientific inputs or scores.
+    Every output_table must be a unique unquoted identifier under SCIENTIFIC_WORKBENCH.RESULTS using only uppercase letters, digits, and underscores. Never write elsewhere.
+  response: |
+    Report exact model metrics and structure format. Separate docking confidence, pLDDT, pTM, ipTM, and pIC50. State that predictions are not experimental evidence.
+tools:
+  - tool_spec:
+      type: generic
+      name: run_diffdock
+      description: Predict ranked ligand poses against a protein with DiffDock.
+      input_schema: {type: object, properties: {smiles: {type: string}, target_pdb: {type: string}, n_poses: {type: integer, minimum: 1, maximum: 20}, output_table: {type: string}}, required: [smiles, target_pdb, n_poses, output_table]}
+  - tool_spec:
+      type: generic
+      name: run_boltz2
+      description: Predict protein or protein-ligand structure and optional affinity with Boltz-2.
+      input_schema: {type: object, properties: {protein_sequence: {type: string}, ligand_smiles: {type: string}, task: {type: string, enum: [structure, affinity, complex]}, output_table: {type: string}}, required: [protein_sequence, ligand_smiles, task, output_table]}
+  - tool_spec:
+      type: generic
+      name: run_openfold2
+      description: Predict a single protein-chain structure with OpenFold2.
+      input_schema: {type: object, properties: {protein_sequence: {type: string}, output_table: {type: string}}, required: [protein_sequence, output_table]}
+  - tool_spec:
+      type: generic
+      name: run_openfold3
+      description: Predict a typed multi-molecule complex with OpenFold3.
+      input_schema: {type: object, properties: {sequences: {type: string}, output_table: {type: string}}, required: [sequences, output_table]}
+  - tool_spec:
+      type: generic
+      name: run_msa_search
+      description: Generate a protein MSA for downstream structure prediction.
+      input_schema: {type: object, properties: {protein_sequence: {type: string}, output_table: {type: string}}, required: [protein_sequence, output_table]}
+  - tool_spec:
+      type: generic
+      name: run_rfdiffusion
+      description: Generate protein backbones against explicit target hotspots with RFdiffusion.
+      input_schema: {type: object, properties: {target_pdb: {type: string}, hotspot_residues: {type: string}, binder_length: {type: integer, minimum: 10, maximum: 300}, n_designs: {type: integer, minimum: 1, maximum: 10}, output_table: {type: string}}, required: [target_pdb, hotspot_residues, binder_length, n_designs, output_table]}
+  - tool_spec:
+      type: generic
+      name: run_proteinmpnn
+      description: Design amino-acid sequences for an existing protein backbone with ProteinMPNN.
+      input_schema: {type: object, properties: {backbone_pdb_stage_path: {type: string}, n_samples: {type: integer, minimum: 1, maximum: 128}, temperature: {type: number, minimum: 0.01, maximum: 1.0}, output_table: {type: string}}, required: [backbone_pdb_stage_path, n_samples, temperature, output_table]}
+tool_resources:
+  run_diffdock: {type: procedure, identifier: SCIENTIFIC_WORKBENCH.CATALOG.RUN_DIFFDOCK, execution_environment: {type: warehouse, warehouse: WORKBENCH_S, query_timeout: 600}}
+  run_boltz2: {type: procedure, identifier: SCIENTIFIC_WORKBENCH.CATALOG.RUN_BOLTZ2, execution_environment: {type: warehouse, warehouse: WORKBENCH_S, query_timeout: 600}}
+  run_openfold2: {type: procedure, identifier: SCIENTIFIC_WORKBENCH.CATALOG.RUN_OPENFOLD2, execution_environment: {type: warehouse, warehouse: WORKBENCH_S, query_timeout: 600}}
+  run_openfold3: {type: procedure, identifier: SCIENTIFIC_WORKBENCH.CATALOG.RUN_OPENFOLD3, execution_environment: {type: warehouse, warehouse: WORKBENCH_S, query_timeout: 600}}
+  run_msa_search: {type: procedure, identifier: SCIENTIFIC_WORKBENCH.CATALOG.RUN_MSA_SEARCH, execution_environment: {type: warehouse, warehouse: WORKBENCH_S, query_timeout: 600}}
+  run_rfdiffusion: {type: procedure, identifier: SCIENTIFIC_WORKBENCH.CATALOG.RUN_RFDIFFUSION, execution_environment: {type: warehouse, warehouse: WORKBENCH_S, query_timeout: 600}}
+  run_proteinmpnn: {type: procedure, identifier: SCIENTIFIC_WORKBENCH.CATALOG.RUN_PROTEINMPNN, execution_environment: {type: warehouse, warehouse: WORKBENCH_S, query_timeout: 600}}
+skills:
+  - name: build-and-evaluate-msa
+    source: {type: STAGE, path: "@SCIENTIFIC_WORKBENCH.CATALOG.AGENT_SKILLS/skills/build-and-evaluate-msa"}
+  - name: msa-assisted-structure-prediction
+    source: {type: STAGE, path: "@SCIENTIFIC_WORKBENCH.CATALOG.AGENT_SKILLS/skills/msa-assisted-structure-prediction"}
+  - name: dock-and-rank-candidates
+    source: {type: STAGE, path: "@SCIENTIFIC_WORKBENCH.CATALOG.AGENT_SKILLS/skills/dock-and-rank-candidates"}
+  - name: design-protein-binder
+    source: {type: STAGE, path: "@SCIENTIFIC_WORKBENCH.CATALOG.AGENT_SKILLS/skills/design-protein-binder"}

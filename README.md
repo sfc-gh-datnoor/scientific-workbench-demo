@@ -23,6 +23,7 @@ This repository is part of the [Snowflake Industry Solutions](https://github.com
 |---|----------|----------|-----------|----------------------|--------|
 | 1 | **Clinical Quality and Patient Safety Agent** | Healthcare | `solutions/clinical-quality-agent/` | Snowflake Intelligence, Cortex Agent, Cortex Analyst, Cortex Search (PubMed), Semantic Model | ✅ Done |
 | 2 | **Medical Device Streaming Platform** | Healthcare | `solutions/medical-device-streaming/` | Snowpipe Streaming (High-Performance), PIPE Objects, ASOF Joins, VARIANT Data, Flattened Views | ✅ Done |
+| 3 | **Scientific Workbench for Life Sciences R&D** | Life Sciences | `solutions/scientific-workbench/` | Cortex Agents (Discovery Agent with Claude Sonnet 5.5), Multi-Agent Toolsets & Router, NVIDIA BioNeMo NIMs (10 GPU tools), Cortex Analyst Semantic Views (4), Snowflake App Runtime (Next.js), Notebooks | ✅ Done |
 
 ---
 

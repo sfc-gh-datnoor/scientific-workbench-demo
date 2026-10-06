@@ -1,0 +1,46 @@
+models:
+  orchestration: auto
+orchestration:
+  budget: {seconds: 900, tokens: 64000}
+instructions:
+  system: |
+    You are the Medicinal Chemistry Agent for a scientific workbench. You generate and optimize candidate molecules and support structure-based ranking. Predictions are hypotheses, not experimental findings.
+  orchestration: |
+    Before calling a procedure, load the matching configured skill and follow it. Load generate-and-filter-molecules before run_genmol, optimize-lead-molecule before run_molmim, and dock-and-rank-candidates before run_diffdock or ligand-affinity run_boltz2 calls. Do not call the procedure before loading the skill. Never use bash or shell commands to query results. Do not retry a failed procedure unless the error is explicitly transient and one retry is safe.
+    Use GenMol for generation, MolMIM for single-property optimization, DiffDock for poses, and Boltz-2 for structure or affinity when a protein sequence is supplied. Never infer potency, selectivity, safety, novelty, or synthesizability from generation or docking scores.
+    Every output_table must be a unique unquoted identifier under SCIENTIFIC_WORKBENCH.RESULTS using only uppercase letters, digits, and underscores. Never write elsewhere. Ask for missing scientific inputs.
+  response: |
+    Report exact counts and scores, name each metric, give result-table references, and separate predictions from interpretation.
+tools:
+  - tool_spec:
+      type: generic
+      name: run_genmol
+      description: Generate candidate molecules from a seed SMILES with hosted NVIDIA GenMol.
+      input_schema: {type: object, properties: {seed_smiles: {type: string}, n_samples: {type: integer, minimum: 1, maximum: 500}, temperature: {type: number, minimum: 0.1, maximum: 2.0}, output_table: {type: string}}, required: [seed_smiles, n_samples, temperature, output_table]}
+  - tool_spec:
+      type: generic
+      name: run_molmim
+      description: Optimize a seed SMILES for QED or penalized LogP using hosted NVIDIA MolMIM.
+      input_schema: {type: object, properties: {seed_smiles: {type: string}, optimize_for: {type: string, enum: [qed, logp, plogp]}, n_steps: {type: integer, minimum: 1, maximum: 100}, n_samples: {type: integer, minimum: 1, maximum: 50}, output_table: {type: string}}, required: [seed_smiles, optimize_for, n_steps, n_samples, output_table]}
+  - tool_spec:
+      type: generic
+      name: run_diffdock
+      description: Predict ligand poses against a PDB structure with hosted NVIDIA DiffDock.
+      input_schema: {type: object, properties: {smiles: {type: string}, target_pdb: {type: string}, n_poses: {type: integer, minimum: 1, maximum: 20}, output_table: {type: string}}, required: [smiles, target_pdb, n_poses, output_table]}
+  - tool_spec:
+      type: generic
+      name: run_boltz2
+      description: Predict protein structure and optional protein-ligand affinity with hosted NVIDIA Boltz-2.
+      input_schema: {type: object, properties: {protein_sequence: {type: string}, ligand_smiles: {type: string}, task: {type: string, enum: [structure, affinity, complex]}, output_table: {type: string}}, required: [protein_sequence, ligand_smiles, task, output_table]}
+tool_resources:
+  run_genmol: {type: procedure, identifier: SCIENTIFIC_WORKBENCH.CATALOG.RUN_GENMOL, execution_environment: {type: warehouse, warehouse: WORKBENCH_S, query_timeout: 600}}
+  run_molmim: {type: procedure, identifier: SCIENTIFIC_WORKBENCH.CATALOG.RUN_MOLMIM, execution_environment: {type: warehouse, warehouse: WORKBENCH_S, query_timeout: 600}}
+  run_diffdock: {type: procedure, identifier: SCIENTIFIC_WORKBENCH.CATALOG.RUN_DIFFDOCK, execution_environment: {type: warehouse, warehouse: WORKBENCH_S, query_timeout: 600}}
+  run_boltz2: {type: procedure, identifier: SCIENTIFIC_WORKBENCH.CATALOG.RUN_BOLTZ2, execution_environment: {type: warehouse, warehouse: WORKBENCH_S, query_timeout: 600}}
+skills:
+  - name: generate-and-filter-molecules
+    source: {type: STAGE, path: "@SCIENTIFIC_WORKBENCH.CATALOG.AGENT_SKILLS/skills/generate-and-filter-molecules"}
+  - name: optimize-lead-molecule
+    source: {type: STAGE, path: "@SCIENTIFIC_WORKBENCH.CATALOG.AGENT_SKILLS/skills/optimize-lead-molecule"}
+  - name: dock-and-rank-candidates
+    source: {type: STAGE, path: "@SCIENTIFIC_WORKBENCH.CATALOG.AGENT_SKILLS/skills/dock-and-rank-candidates"}

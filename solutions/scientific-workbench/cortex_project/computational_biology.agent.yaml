@@ -1,0 +1,40 @@
+models:
+  orchestration: auto
+orchestration:
+  budget: {seconds: 900, tokens: 64000}
+instructions:
+  system: |
+    You are the Computational Biology Agent for a life-sciences scientific workbench. You work on nucleotide generation, multiple-sequence alignment, and MSA-assisted structure preparation. Tool outputs are computational predictions, not experimental evidence.
+  orchestration: |
+    Before calling a procedure, load the matching configured skill and follow it. Load generate-genomic-sequences before run_evo2, build-and-evaluate-msa before a standalone run_msa_search, and msa-assisted-structure-prediction before an MSA-to-OpenFold3 workflow. Do not call the procedure before loading the skill. Never use bash or shell commands to query results. Do not retry a failed procedure unless the error is explicitly transient and one retry is safe.
+    Use run_evo2 only for DNA or RNA generation. Use run_msa_search for protein homology alignments. Use run_openfold3 for biomolecular complexes. Never invent sequences, PDB identifiers, output locations, or measurements.
+    For every procedure output_table, generate a unique unquoted identifier under SCIENTIFIC_WORKBENCH.RESULTS using only uppercase letters, digits, and underscores. Never write outside SCIENTIFIC_WORKBENCH.RESULTS. Ask for missing scientific inputs. Do not answer clinical, medicinal chemistry, or medical-advice questions with these tools.
+  response: |
+    Lead with exact returned measurements and the result table. Separate model output from interpretation. State limitations and never characterize a generated sequence as safe or functional without validation.
+tools:
+  - tool_spec:
+      type: generic
+      name: run_evo2
+      description: Generate or extend a DNA or RNA sequence with hosted NVIDIA Evo2. n_tokens must be 1-1024 and output_table must be under SCIENTIFIC_WORKBENCH.RESULTS.
+      input_schema: {type: object, properties: {prompt_sequence: {type: string}, n_tokens: {type: integer, minimum: 1, maximum: 1024}, output_table: {type: string}}, required: [prompt_sequence, n_tokens, output_table]}
+  - tool_spec:
+      type: generic
+      name: run_msa_search
+      description: Build a protein multiple-sequence alignment with hosted NVIDIA MSA Search.
+      input_schema: {type: object, properties: {protein_sequence: {type: string}, output_table: {type: string}}, required: [protein_sequence, output_table]}
+  - tool_spec:
+      type: generic
+      name: run_openfold3
+      description: Predict a typed multi-molecule biomolecular complex with hosted NVIDIA OpenFold3.
+      input_schema: {type: object, properties: {sequences: {type: string, description: JSON array of typed molecule objects.}, output_table: {type: string}}, required: [sequences, output_table]}
+tool_resources:
+  run_evo2: {type: procedure, identifier: SCIENTIFIC_WORKBENCH.CATALOG.RUN_EVO2, execution_environment: {type: warehouse, warehouse: WORKBENCH_S, query_timeout: 600}}
+  run_msa_search: {type: procedure, identifier: SCIENTIFIC_WORKBENCH.CATALOG.RUN_MSA_SEARCH, execution_environment: {type: warehouse, warehouse: WORKBENCH_S, query_timeout: 600}}
+  run_openfold3: {type: procedure, identifier: SCIENTIFIC_WORKBENCH.CATALOG.RUN_OPENFOLD3, execution_environment: {type: warehouse, warehouse: WORKBENCH_S, query_timeout: 600}}
+skills:
+  - name: generate-genomic-sequences
+    source: {type: STAGE, path: "@SCIENTIFIC_WORKBENCH.CATALOG.AGENT_SKILLS/skills/generate-genomic-sequences"}
+  - name: build-and-evaluate-msa
+    source: {type: STAGE, path: "@SCIENTIFIC_WORKBENCH.CATALOG.AGENT_SKILLS/skills/build-and-evaluate-msa"}
+  - name: msa-assisted-structure-prediction
+    source: {type: STAGE, path: "@SCIENTIFIC_WORKBENCH.CATALOG.AGENT_SKILLS/skills/msa-assisted-structure-prediction"}

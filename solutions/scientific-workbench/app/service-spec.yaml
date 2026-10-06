@@ -1,0 +1,30 @@
+# =============================================================================
+# service-spec.yaml — SPCS Container Service Specification
+# Used by: setup/09-spcs-app-service.sql (inline spec takes precedence)
+# This file is kept as a reference / for manual CREATE SERVICE deployments.
+# =============================================================================
+spec:
+  containers:
+    - name: workbench-app
+      image: /SCIENTIFIC_WORKBENCH/CATALOG/IMAGES/scientific-workbench-app:latest
+      env:
+        PORT: "8000"
+        HOSTNAME: "0.0.0.0"
+        WORKBENCH_DB: "SCIENTIFIC_WORKBENCH"
+        REFERENCE_DB: "WORKBENCH_REFERENCE"
+        PROJECTS_DB: "WORKBENCH_PROJECTS"
+      resources:
+        requests:
+          cpu: "0.5"
+          memory: "1Gi"
+        limits:
+          cpu: "2"
+          memory: "4Gi"
+      secrets:
+        - snowflakeSecret: SCIENTIFIC_WORKBENCH.CATALOG.NVIDIA_API_SECRET
+          secretKeyRef: secret_string
+          envVarName: NVIDIA_API_KEY
+  endpoints:
+    - name: app
+      port: 8000
+      public: true

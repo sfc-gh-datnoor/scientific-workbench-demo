@@ -1,0 +1,108 @@
+-- =============================================================================
+-- tools/nvidia/mirror_nim_images.sql
+-- Mirror NVIDIA NIM container images from nvcr.io into Snowflake image repo
+-- =============================================================================
+-- Prerequisites:
+--   - NGC_API_KEY secret set with valid key (00-prerequisites.sql)
+--   - NGC_REGISTRY_PULL_EAI exists (00-prerequisites.sql)
+--   - Image repository NIM_GPU_IMAGES exists (02-warehouses.sql)
+--   - NIM_BUILD_POOL compute pool exists (02-warehouses.sql)
+--
+-- This script creates a mirroring job service on the CPU build pool.
+-- Each NIM image is pulled from nvcr.io and pushed to the Snowflake registry.
+--
+-- Usage from deploy.sh: --mirror-nims flag
+-- Usage manual: Run each SYSTEM$REGISTRY_COPY command individually
+--
+-- TIMING: Each image takes 5-30 min depending on size (8-16 GiB compressed).
+--         Total for all images: ~60-120 min.
+-- =============================================================================
+
+USE DATABASE SCIENTIFIC_WORKBENCH;
+USE SCHEMA CATALOG;
+
+-- Ensure the image repository exists
+CREATE IMAGE REPOSITORY IF NOT EXISTS SCIENTIFIC_WORKBENCH.CATALOG.NIM_GPU_IMAGES
+  COMMENT = 'NVIDIA NIM container images mirrored from nvcr.io';
+
+-- =============================================================================
+-- MIRROR COMMANDS
+-- =============================================================================
+-- Each command copies one NIM image from nvcr.io into the Snowflake registry.
+-- The NGC_API_KEY is used for authentication against nvcr.io.
+--
+-- Run these sequentially or in parallel (each is independent).
+-- They are idempotent — re-running skips already-present images.
+--
+-- NOTE: These use snow CLI commands, not SQL. Run from your terminal:
+-- =============================================================================
+
+-- To mirror all images, run these snow CLI commands from your terminal:
+--
+--   # Authenticate to NGC registry (one-time)
+--   snow spcs image-registry login
+--
+--   # Mirror each NIM image (replace <repo_url> with your repo URL from SHOW IMAGE REPOSITORIES)
+--   # Get repo URL:
+--   #   SHOW IMAGE REPOSITORIES IN SCHEMA SCIENTIFIC_WORKBENCH.CATALOG;
+--   #   → ingress_url column = <org>-<acct>.registry.snowflakecomputing.com/scientific_workbench/catalog/nim_gpu_images
+--
+--   # Boltz-2 (9.93 GiB — VERIFIED)
+--   docker pull nvcr.io/nim/mit/boltz2:1.8.0
+--   docker tag nvcr.io/nim/mit/boltz2:1.8.0 <repo_url>/boltz2:1.8.0
+--   docker push <repo_url>/boltz2:1.8.0
+--
+--   # GenMol (9.44 GiB)
+--   docker pull nvcr.io/nim/nvidia/genmol:latest
+--   docker tag nvcr.io/nim/nvidia/genmol:latest <repo_url>/genmol:latest
+--   docker push <repo_url>/genmol:latest
+--
+--   # DiffDock (15.33 GiB)
+--   docker pull nvcr.io/nim/mit/diffdock:latest
+--   docker tag nvcr.io/nim/mit/diffdock:latest <repo_url>/diffdock:latest
+--   docker push <repo_url>/diffdock:latest
+--
+--   # ProteinMPNN (8.60 GiB — smallest)
+--   docker pull nvcr.io/nim/nvidia/proteinmpnn:latest
+--   docker tag nvcr.io/nim/nvidia/proteinmpnn:latest <repo_url>/proteinmpnn:latest
+--   docker push <repo_url>/proteinmpnn:latest
+--
+--   # RFdiffusion (16.37 GiB — largest)
+--   docker pull nvcr.io/nim/nvidia/rfdiffusion:2.3.0
+--   docker tag nvcr.io/nim/nvidia/rfdiffusion:2.3.0 <repo_url>/rfdiffusion:2.3.0
+--   docker push <repo_url>/rfdiffusion:2.3.0
+--
+--   # MolMIM (13.04 GiB)
+--   docker pull nvcr.io/nim/nvidia/molmim:latest
+--   docker tag nvcr.io/nim/nvidia/molmim:latest <repo_url>/molmim:latest
+--   docker push <repo_url>/molmim:latest
+--
+--   # OpenFold2 (8-10 GiB)
+--   docker pull nvcr.io/nim/nvidia/openfold2:latest
+--   docker tag nvcr.io/nim/nvidia/openfold2:latest <repo_url>/openfold2:latest
+--   docker push <repo_url>/openfold2:latest
+--
+--   # OpenFold3 (10.19 GiB)
+--   docker pull nvcr.io/nim/nvidia/openfold3:latest
+--   docker tag nvcr.io/nim/nvidia/openfold3:latest <repo_url>/openfold3:latest
+--   docker push <repo_url>/openfold3:latest
+--
+--   # MSA-Search (8.64 GiB — needs block volume for ref DBs)
+--   docker pull nvcr.io/nim/nvidia/msa-search:latest
+--   docker tag nvcr.io/nim/nvidia/msa-search:latest <repo_url>/msa-search:latest
+--   docker push <repo_url>/msa-search:latest
+--
+--   # Evo2 (15.25 GiB — BLOCKED: storage budget unmeasured, mirror only)
+--   docker pull nvcr.io/nim/nvidia/evo2:latest
+--   docker tag nvcr.io/nim/nvidia/evo2:latest <repo_url>/evo2:latest
+--   docker push <repo_url>/evo2:latest
+
+-- =============================================================================
+-- VERIFICATION
+-- =============================================================================
+-- After mirroring, verify images are present:
+
+SELECT SYSTEM$REGISTRY_LIST_IMAGES('/SCIENTIFIC_WORKBENCH/CATALOG/NIM_GPU_IMAGES') AS MIRRORED_IMAGES;
+
+-- Expected: boltz2, genmol, diffdock, proteinmpnn, rfdiffusion, molmim,
+--           openfold2, openfold3, msa-search, evo2
