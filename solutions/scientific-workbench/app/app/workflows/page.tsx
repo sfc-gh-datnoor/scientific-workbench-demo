@@ -21,7 +21,7 @@ async function getPipelineTools() {
     return await querySnowflake(`
       SELECT TOOL_ID, NAME, TOOL_TYPE AS TYPE,
              DOMAIN[0]::VARCHAR AS DOMAIN,
-             COMPUTE_REQUIREMENTS AS COMPUTE_TYPE,
+             COMPUTE_ENV AS COMPUTE_TYPE,
              NULL AS ESTIMATED_RUNTIME, DESCRIPTION
       FROM SCIENTIFIC_WORKBENCH.CATALOG.TOOLS
       WHERE TOOL_TYPE = 'pipeline' AND STATUS = 'active'

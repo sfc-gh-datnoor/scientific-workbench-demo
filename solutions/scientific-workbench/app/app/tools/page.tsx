@@ -7,16 +7,16 @@ export const metadata = { title: "Tools — Scientific Workbench" }
 async function getTools() {
   try {
     return await querySnowflake(`
-      SELECT TOOL_ID, NAME, COALESCE(TOOL_TYPE, TYPE) AS TYPE,
+      SELECT TOOL_ID, NAME, TOOL_TYPE AS TYPE,
              DOMAIN,
-             COMPUTE_TYPE,
-             ESTIMATED_RUNTIME,
+             COMPUTE_ENV AS COMPUTE_TYPE,
+             NULL AS ESTIMATED_RUNTIME,
              DESCRIPTION,
-             COALESCE(PARAMETERS, INPUT_SCHEMA) AS INPUT_SCHEMA,
-             COALESCE(RETURN_TYPE, OUTPUT_SCHEMA) AS OUTPUT_SCHEMA
+             PARAMETERS AS INPUT_SCHEMA,
+             RETURN_TYPE AS OUTPUT_SCHEMA
       FROM SCIENTIFIC_WORKBENCH.CATALOG.TOOLS
       WHERE STATUS = 'active'
-      ORDER BY COALESCE(TOOL_TYPE, TYPE), NAME
+      ORDER BY TOOL_TYPE, NAME
     `)
   } catch { return [] }
 }

@@ -47,13 +47,14 @@ interface StaticNamedQuery {
   sql: string
 }
 
-interface ParameterizedNamedQuery<T extends z.ZodTypeAny = z.ZodTypeAny> {
+interface ParameterizedNamedQuery {
   type: "parameterized"
   description: string
-  paramsSchema: T
+  paramsSchema: z.ZodTypeAny
   allowedSchemas?: ReadonlySet<string>
   allowedDatabases?: ReadonlySet<string>
-  handler: (params: z.infer<T>) => QueryResult
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- params are Zod-validated by resolveNamedQuery before reaching the handler
+  handler: (params: any) => QueryResult
 }
 
 export type NamedQuery = StaticNamedQuery | ParameterizedNamedQuery
@@ -145,7 +146,7 @@ export const NAMED_QUERIES: Record<string, NamedQuery> = {
     type: "parameterized",
     description: "Column metadata for a table (bind variables for schema/table)",
     paramsSchema: SchemaTableParams,
-    handler: (p) => ({
+    handler: (p: z.infer<typeof SchemaTableParams>) => ({
       sql: `SELECT COLUMN_NAME, DATA_TYPE, IS_NULLABLE, CHARACTER_MAXIMUM_LENGTH FROM SCIENTIFIC_WORKBENCH.INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA = ? AND TABLE_NAME = ? ORDER BY ORDINAL_POSITION`,
       binds: [p.schema.toUpperCase(), p.table.toUpperCase()],
     }),
@@ -156,7 +157,7 @@ export const NAMED_QUERIES: Record<string, NamedQuery> = {
     description: "Preview rows from a workbench table (schema allowlisted, identifier quoted)",
     paramsSchema: TablePreviewParams,
     allowedSchemas: WORKBENCH_SCHEMAS,
-    handler: (p) => {
+    handler: (p: z.infer<typeof TablePreviewParams>) => {
       const schema = p.schema.toUpperCase()
       const table = p.table.toUpperCase()
       if (!WORKBENCH_SCHEMAS.has(schema)) {
@@ -174,7 +175,7 @@ export const NAMED_QUERIES: Record<string, NamedQuery> = {
     paramsSchema: ResultPreviewParams,
     allowedSchemas: RESULT_SCHEMAS,
     allowedDatabases: ALLOWED_DATABASES,
-    handler: (p) => {
+    handler: (p: z.infer<typeof ResultPreviewParams>) => {
       const schema = p.schema.toUpperCase()
       const table = p.table.toUpperCase()
       const db = (p.database ?? "SCIENTIFIC_WORKBENCH").toUpperCase()
