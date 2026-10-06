@@ -61,7 +61,21 @@ Test the Discovery Agent with representative domain questions across the 6 life 
 
 ## 3. Launching the Web Application
 
-To access the Next.js Snowflake App Runtime application:
-1. In Snowsight, navigate to **Projects > Streamlit / Apps**.
-2. Select **`SNOWFLAKE_APPS.PUBLIC.SCIENTIFIC_WORKBENCH_APP`**.
-3. Open the web interface to interactively explore the Chat, Asset Catalog, Experiments, Tool Registry, and Governance logs.
+The Scientific Workbench web application is a full-stack **React / Next.js application** deployed via **Snowflake App Runtime (SAR)** as an Application Service.
+
+### Accessing the Deployed React App
+1. In Snowsight, navigate to **Projects > Apps** (or **Snowflake App Runtime**).
+2. Select **`SCIENTIFIC_WORKBENCH_APP`** (located in `SNOWFLAKE_APPS.PUBLIC`).
+3. Click the application endpoint URL (e.g., `https://<app-id>.snowflakecomputing.app`) to open the React interface.
+4. Interactively explore the 10 built-in modules: **Agent Chat, Explore, Asset Catalog, Experiments, Tool Registry, Workflows, Notebooks, Share, Portfolio, and Governance**.
+
+### Running the React App Locally (Development)
+You can also run the React web frontend locally against your Snowflake account:
+
+```bash
+cd solutions/scientific-workbench/app/
+npm install
+npm run dev
+# Open http://localhost:3000 in your browser
+```
+
