@@ -10,6 +10,7 @@ export async function GET() {
     const rows = await querySnowflake(
       `SELECT SESSION_ID, TITLE, UPDATED_AT
        FROM SCIENTIFIC_WORKBENCH.CATALOG.CHAT_SESSIONS
+       WHERE USER_NAME = CURRENT_USER()
        ORDER BY UPDATED_AT DESC
        LIMIT 50`
     )

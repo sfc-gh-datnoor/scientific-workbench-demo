@@ -87,14 +87,14 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
       await querySnowflake(
         `UPDATE SCIENTIFIC_WORKBENCH.CATALOG.CHAT_SESSIONS
          SET TITLE = ?, UPDATED_AT = CURRENT_TIMESTAMP()
-         WHERE SESSION_ID = ?`,
+         WHERE SESSION_ID = ? AND USER_NAME = CURRENT_USER()`,
         { binds: [body.data.title, id] }
       )
     } else {
       await querySnowflake(
         `UPDATE SCIENTIFIC_WORKBENCH.CATALOG.CHAT_SESSIONS
          SET UPDATED_AT = CURRENT_TIMESTAMP()
-         WHERE SESSION_ID = ?`,
+         WHERE SESSION_ID = ? AND USER_NAME = CURRENT_USER()`,
         { binds: [id] }
       )
     }
@@ -110,7 +110,7 @@ export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ 
   try {
     const { id } = await params
     await querySnowflake(
-      `DELETE FROM SCIENTIFIC_WORKBENCH.CATALOG.CHAT_SESSIONS WHERE SESSION_ID = ?`,
+      `DELETE FROM SCIENTIFIC_WORKBENCH.CATALOG.CHAT_SESSIONS WHERE SESSION_ID = ? AND USER_NAME = CURRENT_USER()`,
       { binds: [id] }
     )
     return Response.json({ success: true })
