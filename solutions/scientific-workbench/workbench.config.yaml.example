@@ -1,0 +1,51 @@
+# =============================================================================
+# workbench.config.yaml.example — Snowflake Scientific Workbench Configuration
+# =============================================================================
+# Copy this file to workbench.config.yaml:
+#   cp workbench.config.yaml.example workbench.config.yaml
+#
+# All fields are optional — deploy.sh will auto-detect defaults if omitted.
+# CLI flags passed to deploy.sh will take precedence over values in this file.
+# =============================================================================
+
+snowflake:
+  # Snowflake CLI connection name configured in ~/.snowflake/config.toml
+  connection: default
+
+secrets:
+  # NVIDIA API key from build.nvidia.com (optional at deploy time, can set later)
+  nvidia_api_key: ""
+
+  # NGC API key from ngc.nvidia.com for SPCS NIM container weights (optional)
+  ngc_api_key: ""
+
+databases:
+  workbench: SCIENTIFIC_WORKBENCH
+  reference: WORKBENCH_REFERENCE
+  projects: WORKBENCH_PROJECTS
+
+warehouses:
+  xs: WORKBENCH_XS
+  small: WORKBENCH_S
+  ml: WORKBENCH_ML
+
+# Set to true if you plan to mirror & deploy specific NIMs on SPCS GPUs
+nim_services:
+  boltz2: false
+  genmol: false
+  diffdock: false
+  rfdiffusion: false
+  proteinmpnn: false
+  molmim: false
+  openfold2: false
+  openfold3: false
+  msa_search: false
+
+agents:
+  deploy_legacy_sql: true
+  deploy_agent_studio: true
+
+marketplace:
+  # Set to true if you have subscribed to these CKE listings in Marketplace
+  pubmed_cke: false
+  clinicaltrials_cke: false

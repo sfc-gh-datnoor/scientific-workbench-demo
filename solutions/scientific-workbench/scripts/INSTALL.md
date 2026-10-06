@@ -1,14 +1,31 @@
 # Installation Guide — Snowflake Scientific Workbench
 
-## Quick Start (Config-Driven)
+## Quick Start
+
+You can deploy using either a configuration file or direct CLI flags.
+
+### Option A: Direct CLI Flags (Recommended)
+
+```bash
+# Navigate to the solution directory
+cd solutions/scientific-workbench
+
+# Deploy everything directly using your Snowflake CLI connection
+bash deploy.sh --connection <your-snowflake-connection>
+
+# Optional: Provide NVIDIA API key directly at deploy time (or set via SQL later)
+bash deploy.sh --connection <your-snowflake-connection> --nvidia-key <your-nvidia-key>
+```
+
+### Option B: Config-Driven
 
 ```bash
 # 1. Copy the config template and fill in your values
 cp workbench.config.yaml.example workbench.config.yaml
-# Edit workbench.config.yaml — at minimum set secrets.nvidia_api_key
+# Edit workbench.config.yaml — optionally configure connection and secrets
 
 # 2. Validate your configuration
-bash setup/validate-config.sh
+bash scripts/validate-config.sh
 
 # 3. Deploy everything
 bash deploy.sh --config workbench.config.yaml
@@ -76,7 +93,7 @@ Run SQL scripts in numbered order. Each is idempotent (safe to re-run).
 
 5. **Validate configuration:**
    ```bash
-   bash setup/validate-config.sh
+   bash scripts/validate-config.sh
    ```
 
 ### Steps 14-15: Tools and Semantic Views
@@ -93,7 +110,7 @@ The `deploy.sh` script handles this automatically.
 - **16-agents.sql** deploys 8 SQL-based agents (can be run directly in Snowsight)
 - **17-agent-studio.sh** deploys 4 YAML agents + 7 skills (requires `cortex` CLI):
   ```bash
-  bash setup/17-agent-studio.sh --connection swb_deploy
+  bash scripts/17-agent-studio.sh --connection swb_deploy
   ```
 
 ## Step 2: React App — Local Development
@@ -177,7 +194,7 @@ docker push <repo_url>/scientific-workbench-app:latest
 
 3. Create the service:
 ```sql
--- Run setup/09-spcs-app-service.sql
+-- Run scripts/09-spcs-app-service.sql
 -- This creates the SPCS service with the pushed image
 ```
 
@@ -215,7 +232,7 @@ SELECT COUNT(*) FROM SCIENTIFIC_WORKBENCH.PROVENANCE.PROVENANCE_LOG;
 -- Should be > 0 after running any workflow
 
 -- Run validation test suite
--- setup/11-validation-tests.sql
+-- scripts/11-validation-tests.sql
 ```
 
 ## Teardown

@@ -455,18 +455,18 @@ else
 # Prerequisites references SCIENTIFIC_WORKBENCH.CATALOG for the secret path,
 # so the database must exist first.
 log "Step 1/11: Databases and schemas"
-run_sql "$SCRIPT_DIR/setup/01-databases-and-schemas.sql" "SYSADMIN" "" "Create databases and schemas"
+run_sql "$SCRIPT_DIR/scripts/01-databases-and-schemas.sql" "SYSADMIN" "" "Create databases and schemas"
 
 # Step 2: Warehouses and Compute Pools (needed for subsequent steps)
 log "Step 2/11: Warehouses and compute pools"
-run_sql "$SCRIPT_DIR/setup/02-warehouses.sql" "SYSADMIN" "" "Create warehouses and compute pools"
+run_sql "$SCRIPT_DIR/scripts/02-warehouses.sql" "SYSADMIN" "" "Create warehouses and compute pools"
 
 # Step 0: Prerequisites (ACCOUNTADMIN) — after databases exist
 if [[ "$SKIP_PREREQS" == false ]]; then
   log "Step 0/11: Prerequisites (network rules, EAI, secrets)"
 
   # If NVIDIA or NGC keys are provided, patch the SQL before running
-  PREREQ_FILE="$SCRIPT_DIR/setup/00-prerequisites.sql"
+  PREREQ_FILE="$SCRIPT_DIR/scripts/00-prerequisites.sql"
   if [[ -n "$NVIDIA_KEY" || -n "$NGC_KEY" ]]; then
     TEMP_PREREQ=$(mktemp)
     cp "$PREREQ_FILE" "$TEMP_PREREQ"
@@ -484,35 +484,35 @@ fi
 
 # Step 3: RBAC
 log "Step 3/11: Roles and grants"
-run_sql "$SCRIPT_DIR/setup/03-rbac.sql" "ACCOUNTADMIN" "WORKBENCH_XS" "Create roles and grants"
+run_sql "$SCRIPT_DIR/scripts/03-rbac.sql" "ACCOUNTADMIN" "WORKBENCH_XS" "Create roles and grants"
 
 # Step 5: Tool Registry (tables that Cortex Search depends on)
 log "Step 5/11: Tool registry"
-run_sql "$SCRIPT_DIR/setup/05-tool-registry.sql" "SYSADMIN" "WORKBENCH_XS" "Tool registry table and auto-discovery task"
+run_sql "$SCRIPT_DIR/scripts/05-tool-registry.sql" "SYSADMIN" "WORKBENCH_XS" "Tool registry table and auto-discovery task"
 
 # Step 6: Cortex Services (Search over TOOLS and ASSETS tables from step 5)
 log "Step 6/11: Cortex services (Search, Agent, CKE)"
-run_sql "$SCRIPT_DIR/setup/06-cortex-services.sql" "SYSADMIN" "WORKBENCH_XS" "Cortex Search, Agent, CKE subscriptions"
+run_sql "$SCRIPT_DIR/scripts/06-cortex-services.sql" "SYSADMIN" "WORKBENCH_XS" "Cortex Search, Agent, CKE subscriptions"
 
 # Step 7: Governance
 log "Step 7/11: Governance framework"
-run_sql "$SCRIPT_DIR/setup/07-governance.sql" "SYSADMIN" "WORKBENCH_XS" "Provenance log, canary assertions"
+run_sql "$SCRIPT_DIR/scripts/07-governance.sql" "SYSADMIN" "WORKBENCH_XS" "Provenance log, canary assertions"
 
 # Step 8: Workflow Engine
 log "Step 8/11: Workflow engine"
-run_sql "$SCRIPT_DIR/setup/08-workflow-engine.sql" "SYSADMIN" "WORKBENCH_XS" "Template+Agent workflow engine"
+run_sql "$SCRIPT_DIR/scripts/08-workflow-engine.sql" "SYSADMIN" "WORKBENCH_XS" "Template+Agent workflow engine"
 
 # Step 9: Tool Knowledge (rich per-tool guidance for agents)
 log "Step 9/11: Tool knowledge"
-run_sql "$SCRIPT_DIR/setup/12-tool-knowledge.sql" "SYSADMIN" "WORKBENCH_XS" "Tool knowledge table"
+run_sql "$SCRIPT_DIR/scripts/12-tool-knowledge.sql" "SYSADMIN" "WORKBENCH_XS" "Tool knowledge table"
 
 # Step 10: Agent tool dispatcher (EXECUTE_TOOL_BY_NAME, called by the Discovery Agent)
 log "Step 10/11: Agent tool dispatcher"
-run_sql "$SCRIPT_DIR/setup/13-execute-tool-by-name.sql" "SYSADMIN" "WORKBENCH_XS" "EXECUTE_TOOL_BY_NAME dispatcher"
+run_sql "$SCRIPT_DIR/scripts/13-execute-tool-by-name.sql" "SYSADMIN" "WORKBENCH_XS" "EXECUTE_TOOL_BY_NAME dispatcher"
 
 # Step 11: Validation Test Suite (creates RUN_VALIDATION_TESTS SP for Phase 7)
 log "Step 11/11: Validation test suite"
-run_sql "$SCRIPT_DIR/setup/11-validation-tests.sql" "SYSADMIN" "WORKBENCH_XS" "Validation test SP"
+run_sql "$SCRIPT_DIR/scripts/11-validation-tests.sql" "SYSADMIN" "WORKBENCH_XS" "Validation test SP"
 
 echo ""
 ok "Phase 1 complete: Infrastructure deployed"
@@ -608,7 +608,7 @@ if [[ "$SKIP_DATA" == false ]]; then
   # Seed asset catalog with reference datasets
   run_sql_inline "CALL SCIENTIFIC_WORKBENCH.CATALOG.SEED_ASSETS();" "SYSADMIN" "WORKBENCH_XS" "Seed asset catalog (reference data)"
   # Verify reference data row counts
-  run_sql "$SCRIPT_DIR/setup/04-reference-data.sql" "SYSADMIN" "WORKBENCH_ML" "Verify: reference data counts"
+  run_sql "$SCRIPT_DIR/scripts/04-reference-data.sql" "SYSADMIN" "WORKBENCH_ML" "Verify: reference data counts"
   ok "Phase 2 complete: Reference data loaded"
   echo ""
 else
@@ -661,7 +661,7 @@ done
 
 # BYOT (Bring Your Own Tool) infrastructure
 log "Deploying BYOT custom tool onboarding..."
-run_sql "$SCRIPT_DIR/setup/14-custom-tool-onboarding.sql" "SYSADMIN" "WORKBENCH_XS" "BYOT onboarding infrastructure"
+run_sql "$SCRIPT_DIR/scripts/14-custom-tool-onboarding.sql" "SYSADMIN" "WORKBENCH_XS" "BYOT onboarding infrastructure"
 
 echo ""
 ok "Phase 3 complete: All tools deployed"
