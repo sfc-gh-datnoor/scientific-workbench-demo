@@ -128,10 +128,14 @@ export default function ChatPage() {
   async function loadSession(session: ChatSession) {
     setThreadId(session.SESSION_ID)
     setMessages([])
+    setParentMessageId(null)
     try {
       const res = await fetch(`/api/chat/sessions/${session.SESSION_ID}`)
       const data = await res.json()
       setMessages((data.messages || []) as Message[])
+      if (data.last_assistant_message_id) {
+        setParentMessageId(data.last_assistant_message_id)
+      }
     } catch { /* empty */ }
   }
 

@@ -33,6 +33,7 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
     // Extract messages from thread data
     const rawMessages = (threadData.messages || []) as Array<{
       role: string
+      message_id?: string | number
       message_payload: string
       created_on: number
     }>
@@ -61,12 +62,17 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
       return {
         role: m.role === "assistant" ? "agent" : m.role,
         content,
+        message_id: m.message_id ? String(m.message_id) : null,
         timestamp: m.created_on ? new Date(m.created_on).toISOString() : new Date().toISOString(),
       }
     }).filter((m) => m.content.trim().length > 0)
       .sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime())
 
-    return Response.json({ messages })
+    // Find the last assistant message_id for thread continuation
+    const lastAssistantMsg = [...messages].reverse().find((m) => m.role === "agent" && m.message_id)
+    const lastAssistantMessageId = lastAssistantMsg?.message_id ?? null
+
+    return Response.json({ messages, last_assistant_message_id: lastAssistantMessageId })
   } catch (e) {
     console.error("[chat session GET]", e)
     return Response.json({ messages: [] })
