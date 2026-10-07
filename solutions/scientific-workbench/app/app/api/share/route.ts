@@ -49,8 +49,13 @@ async function requireAdmin(): Promise<Response | null> {
     }
     return null // authorized
   } catch {
-    // Caller's rights unavailable (local dev) — deny by default.
-    // To develop locally, set SNOWFLAKE_ROLE=WORKBENCH_ADMIN in your env.
+    // Caller's rights unavailable (local dev). Allow only if the dev
+    // explicitly opted in via SWB_LOCAL_DEV_ADMIN=true. This env var
+    // has no effect in SPCS where caller's-rights always succeeds.
+    if (process.env.SWB_LOCAL_DEV_ADMIN === "true") {
+      console.warn("[share] Local dev admin override active — caller role check skipped")
+      return null
+    }
     return Response.json(
       { error: "Forbidden: could not verify caller role" },
       { status: 403 }
