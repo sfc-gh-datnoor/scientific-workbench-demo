@@ -14,6 +14,9 @@ const ALLOWED_DATABASES = new Set([
 // Only workbench roles shown in the grant picker
 const ALLOWED_ROLE_PREFIXES = ["WORKBENCH_"]
 
+// GET actions that require WORKBENCH_ADMIN
+const ADMIN_READ_ACTIONS = new Set(["grants", "shares", "user-roles"])
+
 function validateId(value: string, label: string): string {
   if (!value || !IDENTIFIER_RE.test(value)) {
     throw new Error(`Invalid ${label}: ${value}`)
@@ -33,11 +36,39 @@ function validateAllowedDb(db: string): string {
   return upper
 }
 
+async function requireAdmin(): Promise<Response | null> {
+  // Try caller's-rights first (SPCS deployed mode)
+  try {
+    const [row] = await querySnowflake("SELECT CURRENT_ROLE() AS role", { callersRights: true })
+    const callerRole = String(row?.ROLE ?? "").toUpperCase()
+    if (callerRole !== "WORKBENCH_ADMIN") {
+      return Response.json(
+        { error: "Forbidden: only WORKBENCH_ADMIN can perform this action" },
+        { status: 403 }
+      )
+    }
+    return null // authorized
+  } catch {
+    // Caller's rights unavailable (local dev) — deny by default.
+    // To develop locally, set SNOWFLAKE_ROLE=WORKBENCH_ADMIN in your env.
+    return Response.json(
+      { error: "Forbidden: could not verify caller role" },
+      { status: 403 }
+    )
+  }
+}
+
 export async function GET(request: NextRequest) {
   const params = request.nextUrl.searchParams
   const action = params.get("action") ?? ""
 
   try {
+    // Admin-only read actions
+    if (ADMIN_READ_ACTIONS.has(action)) {
+      const denied = await requireAdmin()
+      if (denied) return denied
+    }
+
     switch (action) {
       case "databases": {
         const rows = [...ALLOWED_DATABASES].map((name) => ({ name }))
@@ -74,8 +105,10 @@ export async function GET(request: NextRequest) {
         return Response.json({ rows: filtered })
       }
       case "user-roles": {
-        const username = quoteId(params.get("username") ?? "")
-        const rows = await querySnowflake(`SHOW GRANTS TO USER ${username}`)
+        // Scoped to the current caller only — cannot query other users' roles
+        const rows = await querySnowflake(
+          `SHOW GRANTS TO USER IDENTIFIER(CURRENT_USER())`
+        )
         const filtered = rows
           .filter((r) => r.granted_on === "ROLE")
           .map((r) => ({ role: r.role ?? r.name ?? "" }))
@@ -118,30 +151,10 @@ export async function POST(request: NextRequest) {
     const body = await request.json()
     const action = body.action ?? ""
 
-    // Authorization: grant and create actions require WORKBENCH_ADMIN role.
-    // Caller's-rights query ensures we check the *caller's* role, not the service identity.
-    if (action === "grant" || action === "create") {
-      try {
-        const [row] = await querySnowflake("SELECT CURRENT_ROLE() AS role", { callersRights: true })
-        const callerRole = String(row?.ROLE ?? "").toUpperCase()
-        if (callerRole !== "WORKBENCH_ADMIN") {
-          return Response.json(
-            { error: "Forbidden: only WORKBENCH_ADMIN can grant access or create shares" },
-            { status: 403 }
-          )
-        }
-      } catch {
-        // In local dev without caller context, fall back to service role check
-        const [row] = await querySnowflake("SELECT CURRENT_ROLE() AS role")
-        const serviceRole = String(row?.ROLE ?? "").toUpperCase()
-        if (serviceRole !== "WORKBENCH_ADMIN" && serviceRole !== "ACCOUNTADMIN") {
-          return Response.json(
-            { error: "Forbidden: only WORKBENCH_ADMIN can grant access or create shares" },
-            { status: 403 }
-          )
-        }
-      }
-    }
+    // Authorization: all POST actions require WORKBENCH_ADMIN.
+    // Denies by default if caller role cannot be verified (no fail-open).
+    const denied = await requireAdmin()
+    if (denied) return denied
 
     switch (action) {
       case "grant": {
