@@ -14,8 +14,8 @@ const ALLOWED_DATABASES = new Set([
 // Only workbench roles shown in the grant picker
 const ALLOWED_ROLE_PREFIXES = ["WORKBENCH_"]
 
-// GET actions that require WORKBENCH_ADMIN
-const ADMIN_READ_ACTIONS = new Set(["grants", "shares", "user-roles"])
+// GET actions that require a workbench role (not public)
+const PROTECTED_READ_ACTIONS = new Set(["grants", "shares", "user-roles"])
 
 function validateId(value: string, label: string): string {
   if (!value || !IDENTIFIER_RE.test(value)) {
@@ -36,14 +36,16 @@ function validateAllowedDb(db: string): string {
   return upper
 }
 
-async function requireAdmin(): Promise<Response | null> {
+const ALLOWED_SHARE_ROLES = new Set(["WORKBENCH_ADMIN", "WORKBENCH_SCIENTIST"])
+
+async function requireWorkbenchRole(): Promise<Response | null> {
   // Try caller's-rights first (SPCS deployed mode)
   try {
     const [row] = await querySnowflake("SELECT CURRENT_ROLE() AS role", { callersRights: true })
     const callerRole = String(row?.ROLE ?? "").toUpperCase()
-    if (callerRole !== "WORKBENCH_ADMIN") {
+    if (!ALLOWED_SHARE_ROLES.has(callerRole)) {
       return Response.json(
-        { error: "Forbidden: only WORKBENCH_ADMIN can perform this action" },
+        { error: "Forbidden: requires WORKBENCH_ADMIN or WORKBENCH_SCIENTIST role" },
         { status: 403 }
       )
     }
@@ -69,8 +71,8 @@ export async function GET(request: NextRequest) {
 
   try {
     // Admin-only read actions
-    if (ADMIN_READ_ACTIONS.has(action)) {
-      const denied = await requireAdmin()
+    if (PROTECTED_READ_ACTIONS.has(action)) {
+      const denied = await requireWorkbenchRole()
       if (denied) return denied
     }
 
@@ -156,9 +158,9 @@ export async function POST(request: NextRequest) {
     const body = await request.json()
     const action = body.action ?? ""
 
-    // Authorization: all POST actions require WORKBENCH_ADMIN.
+    // Authorization: all POST actions require a workbench role.
     // Denies by default if caller role cannot be verified (no fail-open).
-    const denied = await requireAdmin()
+    const denied = await requireWorkbenchRole()
     if (denied) return denied
 
     switch (action) {
