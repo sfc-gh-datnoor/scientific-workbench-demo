@@ -1,3 +1,0 @@
-# Override root .gitignore which excludes lib/ (Python packaging convention).
-# This app/lib/ directory contains Next.js source files (snowflake.ts, etc.).
-!lib/
