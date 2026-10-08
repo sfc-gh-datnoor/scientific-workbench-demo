@@ -67,6 +67,14 @@ const WORKBENCH_SCHEMAS = new Set([
   "CATALOG", "WORKFLOWS", "GOVERNANCE", "PROVENANCE", "PROJECTS",
 ]) as ReadonlySet<string>
 
+const REFERENCE_SCHEMAS = new Set([
+  "GENOMICS", "CHEMBL", "CLINICAL", "PATHWAYS", "PROTEIN",
+]) as ReadonlySet<string>
+
+const ASSET_PREVIEW_SCHEMAS = new Set([
+  ...WORKBENCH_SCHEMAS, ...REFERENCE_SCHEMAS,
+]) as ReadonlySet<string>
+
 const RESULT_SCHEMAS = new Set([
   ...WORKBENCH_SCHEMAS, "SHARED_ANALYTICS",
 ]) as ReadonlySet<string>
@@ -101,6 +109,12 @@ const TablePreviewParams = z.object({
   limit: z.coerce.number().int().min(1).max(200).optional(),
 })
 
+const AssetPreviewParams = z.object({
+  schema_name: z.string().min(1).max(511),
+  asset_name: IdentifierSchema,
+  limit: z.coerce.number().int().min(1).max(100).optional(),
+})
+
 // ---------------------------------------------------------------------------
 // Registry
 // ---------------------------------------------------------------------------
@@ -121,7 +135,7 @@ export const NAMED_QUERIES: Record<string, NamedQuery> = {
   assets_list: {
     type: "static",
     description: "All assets in the catalog",
-    sql: `SELECT ASSET_ID, ASSET_NAME, ASSET_TYPE, DOMAIN AS PROGRAM, OWNER, DESCRIPTION, NULL AS QUALITY_STATUS, CREATED_AT FROM SCIENTIFIC_WORKBENCH.CATALOG.ASSETS ORDER BY CREATED_AT DESC NULLS LAST LIMIT 200`,
+    sql: `SELECT ASSET_ID, ASSET_NAME, ASSET_TYPE, DOMAIN AS PROGRAM, OWNER, DESCRIPTION, SCHEMA_NAME, ROW_COUNT, NULL AS QUALITY_STATUS, CREATED_AT FROM SCIENTIFIC_WORKBENCH.CATALOG.ASSETS ORDER BY CREATED_AT DESC NULLS LAST LIMIT 200`,
   },
 
   promotion_log: {
@@ -187,6 +201,55 @@ export const NAMED_QUERIES: Record<string, NamedQuery> = {
       }
       const quoted = `${quoteIdentifier(db)}.${quoteIdentifier(schema)}.${quoteIdentifier(table)}`
       return { sql: `SELECT * FROM ${quoted} LIMIT 100` }
+    },
+  },
+
+  asset_column_info: {
+    type: "parameterized",
+    description: "Column metadata for an asset's underlying table (supports cross-database SCHEMA_NAME)",
+    paramsSchema: AssetPreviewParams,
+    allowedSchemas: ASSET_PREVIEW_SCHEMAS,
+    allowedDatabases: ALLOWED_DATABASES,
+    handler: (p: z.infer<typeof AssetPreviewParams>) => {
+      const parts = p.schema_name.toUpperCase().split(".")
+      let db: string, schema: string
+      if (parts.length === 2) {
+        db = parts[0]; schema = parts[1]
+      } else {
+        db = "SCIENTIFIC_WORKBENCH"; schema = parts[0]
+      }
+      if (!ALLOWED_DATABASES.has(db) && !ASSET_PREVIEW_SCHEMAS.has(schema)) {
+        throw new Error(`Schema ${p.schema_name} is not available for column info`)
+      }
+      const table = p.asset_name.toUpperCase()
+      return {
+        sql: `SELECT COLUMN_NAME, DATA_TYPE, IS_NULLABLE, CHARACTER_MAXIMUM_LENGTH FROM ${quoteIdentifier(db)}.INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA = ? AND TABLE_NAME = ? ORDER BY ORDINAL_POSITION`,
+        binds: [schema, table],
+      }
+    },
+  },
+
+  asset_preview: {
+    type: "parameterized",
+    description: "Preview rows from an asset's underlying table (supports cross-database SCHEMA_NAME)",
+    paramsSchema: AssetPreviewParams,
+    allowedSchemas: ASSET_PREVIEW_SCHEMAS,
+    allowedDatabases: ALLOWED_DATABASES,
+    handler: (p: z.infer<typeof AssetPreviewParams>) => {
+      const parts = p.schema_name.toUpperCase().split(".")
+      let db: string, schema: string
+      if (parts.length === 2) {
+        db = parts[0]; schema = parts[1]
+      } else {
+        db = "SCIENTIFIC_WORKBENCH"; schema = parts[0]
+      }
+      if (!ALLOWED_DATABASES.has(db) && !ASSET_PREVIEW_SCHEMAS.has(schema)) {
+        throw new Error(`Schema ${p.schema_name} is not available for asset preview`)
+      }
+      const table = p.asset_name.toUpperCase()
+      const limit = Math.min(p.limit ?? 20, 100)
+      const quoted = `${quoteIdentifier(db)}.${quoteIdentifier(schema)}.${quoteIdentifier(table)}`
+      return { sql: `SELECT * FROM ${quoted} LIMIT ${limit}` }
     },
   },
 }
