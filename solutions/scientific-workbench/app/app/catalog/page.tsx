@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from "react"
 import { useDetailPanel } from "@/components/detail-panel-context"
 import { DetailPanelEmpty } from "@/components/detail-panel-empty"
-import { Search, Package, Table2, Columns3, Eye } from "lucide-react"
+import { Search, Package, Columns3, Eye } from "lucide-react"
 import { toRows, queryError } from "@/lib/query-rows"
 
 interface Asset {
@@ -81,59 +81,35 @@ function AssetDetailPanel({ asset }: { asset: Asset }) {
   const [tab, setTab] = useState<"info" | "schema" | "preview">("info")
   const [columns, setColumns] = useState<ColumnInfo[]>([])
   const [previewRows, setPreviewRows] = useState<Record<string, unknown>[]>([])
-  const [loadingSchema, setLoadingSchema] = useState(false)
-  const [loadingPreview, setLoadingPreview] = useState(false)
-  const [schemaError, setSchemaError] = useState<string | null>(null)
-  const [previewError, setPreviewError] = useState<string | null>(null)
+  const [tables, setTables] = useState<Record<string, unknown>[]>([])
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const [loaded, setLoaded] = useState(false)
 
   const isPreviewable = PREVIEWABLE_TYPES.has(asset.ASSET_TYPE?.toLowerCase())
 
-  const loadSchema = useCallback(async () => {
-    if (!asset.SCHEMA_NAME || !asset.ASSET_ID || columns.length > 0) return
-    setLoadingSchema(true)
-    setSchemaError(null)
+  const loadAssetData = useCallback(async () => {
+    if (!asset.ASSET_ID || loaded) return
+    setLoading(true)
+    setError(null)
     try {
-      const res = await fetch("/api/query", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ query: "asset_column_info", params: { asset_id: asset.ASSET_ID, schema_name: asset.SCHEMA_NAME } }),
-      })
+      const res = await fetch(`/api/asset-preview?id=${encodeURIComponent(asset.ASSET_ID)}`)
       const data = await res.json()
-      const qErr = queryError(data)
-      if (qErr) { setSchemaError(qErr); return }
-      setColumns(toRows<ColumnInfo>(data))
+      if (data.error) { setError(data.error); return }
+      setColumns(data.columns || [])
+      setPreviewRows(data.rows || [])
+      setTables(data.tables || [])
+      setLoaded(true)
     } catch (e) {
-      setSchemaError(e instanceof Error ? e.message : "Failed to load schema")
+      setError(e instanceof Error ? e.message : "Failed to load asset data")
     } finally {
-      setLoadingSchema(false)
+      setLoading(false)
     }
-  }, [asset.ASSET_ID, asset.SCHEMA_NAME, columns.length])
-
-  const loadPreview = useCallback(async () => {
-    if (!asset.SCHEMA_NAME || !asset.ASSET_ID || previewRows.length > 0) return
-    setLoadingPreview(true)
-    setPreviewError(null)
-    try {
-      const res = await fetch("/api/query", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ query: "asset_preview", params: { asset_id: asset.ASSET_ID, schema_name: asset.SCHEMA_NAME, limit: 20 } }),
-      })
-      const data = await res.json()
-      const qErr = queryError(data)
-      if (qErr) { setPreviewError(qErr); return }
-      setPreviewRows(toRows<Record<string, unknown>>(data))
-    } catch (e) {
-      setPreviewError(e instanceof Error ? e.message : "Failed to load preview")
-    } finally {
-      setLoadingPreview(false)
-    }
-  }, [asset.ASSET_ID, asset.SCHEMA_NAME, previewRows.length])
+  }, [asset.ASSET_ID, loaded])
 
   useEffect(() => {
-    if (tab === "schema" && isPreviewable) loadSchema()
-    if (tab === "preview" && isPreviewable) loadPreview()
-  }, [tab, isPreviewable, loadSchema, loadPreview])
+    if ((tab === "schema" || tab === "preview") && isPreviewable) loadAssetData()
+  }, [tab, isPreviewable, loadAssetData])
 
   const tabStyle = (active: boolean) => ({
     padding: "6px 12px",
@@ -166,9 +142,9 @@ function AssetDetailPanel({ asset }: { asset: Asset }) {
 
       {tab === "schema" && (
         <div>
-          {loadingSchema && <div style={{ padding: 20, textAlign: "center", color: "var(--sf-text-muted)", fontSize: 13 }}>Loading schema...</div>}
-          {schemaError && <div style={{ padding: 10, fontSize: 12, color: "var(--role-critical, #ef4444)" }}>{schemaError}</div>}
-          {!loadingSchema && !schemaError && columns.length === 0 && <div style={{ padding: 20, textAlign: "center", color: "var(--sf-text-muted)", fontSize: 13 }}>No columns found</div>}
+          {loading && <div style={{ padding: 20, textAlign: "center", color: "var(--sf-text-muted)", fontSize: 13 }}>Loading schema...</div>}
+          {error && <div style={{ padding: 10, fontSize: 12, color: "var(--role-critical, #ef4444)" }}>{error}</div>}
+          {!loading && !error && columns.length === 0 && <div style={{ padding: 20, textAlign: "center", color: "var(--sf-text-muted)", fontSize: 13 }}>No columns found</div>}
           {columns.length > 0 && (
             <div className="space-y-2">
               <div style={{ fontSize: 12, color: "var(--sf-text-muted)", marginBottom: 8 }}>{columns.length} columns</div>
@@ -191,9 +167,20 @@ function AssetDetailPanel({ asset }: { asset: Asset }) {
 
       {tab === "preview" && (
         <div>
-          {loadingPreview && <div style={{ padding: 20, textAlign: "center", color: "var(--sf-text-muted)", fontSize: 13 }}>Loading preview...</div>}
-          {previewError && <div style={{ padding: 10, fontSize: 12, color: "var(--role-critical, #ef4444)" }}>{previewError}</div>}
-          {!loadingPreview && !previewError && previewRows.length === 0 && <div style={{ padding: 20, textAlign: "center", color: "var(--sf-text-muted)", fontSize: 13 }}>No data</div>}
+          {loading && <div style={{ padding: 20, textAlign: "center", color: "var(--sf-text-muted)", fontSize: 13 }}>Loading preview...</div>}
+          {error && <div style={{ padding: 10, fontSize: 12, color: "var(--role-critical, #ef4444)" }}>{error}</div>}
+          {!loading && !error && previewRows.length === 0 && tables.length > 0 && (
+            <div>
+              <div style={{ fontSize: 12, color: "var(--sf-text-muted)", marginBottom: 8 }}>Tables in this schema:</div>
+              {tables.map((t, i) => (
+                <div key={i} style={{ padding: "6px 8px", borderRadius: "var(--radius-sm)", border: "1px solid var(--sf-border)", background: "var(--sf-card-bg)", marginBottom: 4, fontSize: 12 }}>
+                  <span style={{ fontWeight: 500, fontFamily: "var(--font-fira-mono)", color: "var(--sf-text)" }}>{String(t.TABLE_NAME)}</span>
+                  {t.ROW_COUNT != null && <span style={{ color: "var(--sf-text-muted)", marginLeft: 8 }}>{Number(t.ROW_COUNT).toLocaleString()} rows</span>}
+                </div>
+              ))}
+            </div>
+          )}
+          {!loading && !error && previewRows.length === 0 && tables.length === 0 && <div style={{ padding: 20, textAlign: "center", color: "var(--sf-text-muted)", fontSize: 13 }}>No data</div>}
           {previewRows.length > 0 && (
             <div style={{ overflow: "auto", maxHeight: "calc(100vh - 200px)" }}>
               <div style={{ fontSize: 12, color: "var(--sf-text-muted)", marginBottom: 8 }}>Showing {previewRows.length} rows</div>
