@@ -89,14 +89,14 @@ function AssetDetailPanel({ asset }: { asset: Asset }) {
   const isPreviewable = PREVIEWABLE_TYPES.has(asset.ASSET_TYPE?.toLowerCase())
 
   const loadSchema = useCallback(async () => {
-    if (!asset.SCHEMA_NAME || columns.length > 0) return
+    if (!asset.SCHEMA_NAME || !asset.ASSET_ID || columns.length > 0) return
     setLoadingSchema(true)
     setSchemaError(null)
     try {
       const res = await fetch("/api/query", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ query: "asset_column_info", params: { schema_name: asset.SCHEMA_NAME, asset_name: asset.ASSET_NAME } }),
+        body: JSON.stringify({ query: "asset_column_info", params: { asset_id: asset.ASSET_ID, schema_name: asset.SCHEMA_NAME } }),
       })
       const data = await res.json()
       const qErr = queryError(data)
@@ -107,17 +107,17 @@ function AssetDetailPanel({ asset }: { asset: Asset }) {
     } finally {
       setLoadingSchema(false)
     }
-  }, [asset.SCHEMA_NAME, asset.ASSET_NAME, columns.length])
+  }, [asset.ASSET_ID, asset.SCHEMA_NAME, columns.length])
 
   const loadPreview = useCallback(async () => {
-    if (!asset.SCHEMA_NAME || previewRows.length > 0) return
+    if (!asset.SCHEMA_NAME || !asset.ASSET_ID || previewRows.length > 0) return
     setLoadingPreview(true)
     setPreviewError(null)
     try {
       const res = await fetch("/api/query", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ query: "asset_preview", params: { schema_name: asset.SCHEMA_NAME, asset_name: asset.ASSET_NAME, limit: 20 } }),
+        body: JSON.stringify({ query: "asset_preview", params: { asset_id: asset.ASSET_ID, schema_name: asset.SCHEMA_NAME, limit: 20 } }),
       })
       const data = await res.json()
       const qErr = queryError(data)
@@ -128,7 +128,7 @@ function AssetDetailPanel({ asset }: { asset: Asset }) {
     } finally {
       setLoadingPreview(false)
     }
-  }, [asset.SCHEMA_NAME, asset.ASSET_NAME, previewRows.length])
+  }, [asset.ASSET_ID, asset.SCHEMA_NAME, previewRows.length])
 
   useEffect(() => {
     if (tab === "schema" && isPreviewable) loadSchema()

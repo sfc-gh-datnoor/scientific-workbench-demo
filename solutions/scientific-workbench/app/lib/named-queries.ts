@@ -80,7 +80,7 @@ const RESULT_SCHEMAS = new Set([
 ]) as ReadonlySet<string>
 
 const ALLOWED_DATABASES = new Set([
-  "SCIENTIFIC_WORKBENCH", "WORKBENCH_PROJECTS",
+  "SCIENTIFIC_WORKBENCH", "WORKBENCH_PROJECTS", "WORKBENCH_REFERENCE",
 ]) as ReadonlySet<string>
 
 // ---------------------------------------------------------------------------
@@ -110,10 +110,21 @@ const TablePreviewParams = z.object({
 })
 
 const AssetPreviewParams = z.object({
+  asset_id: z.string().min(1).max(511),
   schema_name: z.string().min(1).max(511),
-  asset_name: IdentifierSchema,
   limit: z.coerce.number().int().min(1).max(100).optional(),
 })
+
+function resolveAssetTable(assetId: string, schemaName: string): { db: string; schema: string; table: string } | null {
+  // asset-data-DB.SCHEMA.TABLE format (from SEED_ASSETS)
+  const match = assetId.match(/^asset-data-([^.]+)\.([^.]+)\.(.+)$/)
+  if (match) {
+    return { db: match[1], schema: match[2], table: match[3] }
+  }
+  // For other asset IDs, we can't resolve the table name directly.
+  // Return null to signal that preview is unavailable for this asset.
+  return null
+}
 
 // ---------------------------------------------------------------------------
 // Registry
@@ -206,22 +217,19 @@ export const NAMED_QUERIES: Record<string, NamedQuery> = {
 
   asset_column_info: {
     type: "parameterized",
-    description: "Column metadata for an asset's underlying table (supports cross-database SCHEMA_NAME)",
+    description: "Column metadata for an asset's underlying table (resolves via asset_id)",
     paramsSchema: AssetPreviewParams,
     allowedSchemas: ASSET_PREVIEW_SCHEMAS,
     allowedDatabases: ALLOWED_DATABASES,
     handler: (p: z.infer<typeof AssetPreviewParams>) => {
-      const parts = p.schema_name.toUpperCase().split(".")
-      let db: string, schema: string
-      if (parts.length === 2) {
-        db = parts[0]; schema = parts[1]
-      } else {
-        db = "SCIENTIFIC_WORKBENCH"; schema = parts[0]
+      const resolved = resolveAssetTable(p.asset_id, p.schema_name)
+      if (!resolved) {
+        throw new Error("Cannot resolve table for this asset. Preview is only available for seeded reference datasets.")
       }
+      const { db, schema, table } = resolved
       if (!ALLOWED_DATABASES.has(db) && !ASSET_PREVIEW_SCHEMAS.has(schema)) {
-        throw new Error(`Schema ${p.schema_name} is not available for column info`)
+        throw new Error(`Schema ${db}.${schema} is not available for column info`)
       }
-      const table = p.asset_name.toUpperCase()
       return {
         sql: `SELECT COLUMN_NAME, DATA_TYPE, IS_NULLABLE, CHARACTER_MAXIMUM_LENGTH FROM ${quoteIdentifier(db)}.INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA = ? AND TABLE_NAME = ? ORDER BY ORDINAL_POSITION`,
         binds: [schema, table],
@@ -231,22 +239,19 @@ export const NAMED_QUERIES: Record<string, NamedQuery> = {
 
   asset_preview: {
     type: "parameterized",
-    description: "Preview rows from an asset's underlying table (supports cross-database SCHEMA_NAME)",
+    description: "Preview rows from an asset's underlying table (resolves via asset_id)",
     paramsSchema: AssetPreviewParams,
     allowedSchemas: ASSET_PREVIEW_SCHEMAS,
     allowedDatabases: ALLOWED_DATABASES,
     handler: (p: z.infer<typeof AssetPreviewParams>) => {
-      const parts = p.schema_name.toUpperCase().split(".")
-      let db: string, schema: string
-      if (parts.length === 2) {
-        db = parts[0]; schema = parts[1]
-      } else {
-        db = "SCIENTIFIC_WORKBENCH"; schema = parts[0]
+      const resolved = resolveAssetTable(p.asset_id, p.schema_name)
+      if (!resolved) {
+        throw new Error("Cannot resolve table for this asset. Preview is only available for seeded reference datasets.")
       }
+      const { db, schema, table } = resolved
       if (!ALLOWED_DATABASES.has(db) && !ASSET_PREVIEW_SCHEMAS.has(schema)) {
-        throw new Error(`Schema ${p.schema_name} is not available for asset preview`)
+        throw new Error(`Schema ${db}.${schema} is not available for asset preview`)
       }
-      const table = p.asset_name.toUpperCase()
       const limit = Math.min(p.limit ?? 20, 100)
       const quoted = `${quoteIdentifier(db)}.${quoteIdentifier(schema)}.${quoteIdentifier(table)}`
       return { sql: `SELECT * FROM ${quoted} LIMIT ${limit}` }
